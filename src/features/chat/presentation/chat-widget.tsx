@@ -54,7 +54,7 @@ export function ChatWidget() {
         <DialogTrigger asChild>
           <Button
             size="icon"
-            className="fixed right-4 bottom-4 size-14 rounded-full border-none bg-linear-to-tr from-primary to-rose-600 text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:shadow-primary/25 sm:right-6 sm:bottom-6"
+            className="fixed z-50 right-4 bottom-4 size-14 rounded-full border-none bg-linear-to-tr from-primary to-rose-600 text-primary-foreground shadow-2xl transition-all hover:scale-105 hover:shadow-primary/25 sm:right-6 sm:bottom-6"
           >
             <BotMessageSquare className="size-8" strokeWidth={2.25} />
             <span className="sr-only">Abrir chat</span>
