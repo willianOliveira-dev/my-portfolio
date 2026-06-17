@@ -13,7 +13,7 @@ export function AboutSection() {
     <section
       id="about"
       aria-labelledby="about-title"
-      className="relative z-10 isolate -mt-12 overflow-hidden scroll-mt-28 bg-(--about-section-bg) px-4 py-24 sm:px-6 sm:py-28 lg:px-8"
+      className="relative z-10 isolate -mt-12 overflow-hidden scroll-mt-28 bg-(--about-section-bg) px-4 py-20 sm:px-6 sm:py-24 lg:px-8"
     >
       <div
         aria-hidden="true"
@@ -21,10 +21,10 @@ export function AboutSection() {
       />
 
 
-      <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 items-center gap-10 lg:min-h-144 lg:grid-cols-[minmax(0,1.08fr)_minmax(28rem,0.92fr)] lg:gap-16">
+      <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 lg:min-h-144 lg:grid-cols-[minmax(0,1.08fr)_minmax(28rem,0.92fr)] lg:gap-14">
         <AboutKeyboardShowcase />
 
-        <div className="flex flex-col gap-8 lg:justify-self-end">
+        <div className="flex flex-col gap-7 lg:justify-self-end">
           <AboutHeading locale={locale} />
           <AboutContent locale={locale} />
         </div>

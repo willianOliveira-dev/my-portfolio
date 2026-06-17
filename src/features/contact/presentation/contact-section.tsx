@@ -10,9 +10,9 @@ export function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative w-full scroll-mt-24 bg-background px-4 py-24 sm:px-8 md:py-32 lg:px-16 xl:px-32"
+      className="relative w-full scroll-mt-24 bg-background px-4 py-20 sm:px-8 md:py-24 lg:px-16 xl:px-32"
     >
-      <div className="mx-auto flex max-w-7xl flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(36rem,1.2fr)] lg:gap-16">
+      <div className="mx-auto flex max-w-7xl flex-col gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(36rem,1.2fr)] lg:gap-14">
         <div className="flex flex-col gap-6">
           <h2 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             {m.contact_section_title_1({}, { locale })}

@@ -21,7 +21,7 @@ export function StorySection() {
     <section
       id="journey"
       aria-labelledby="story-title"
-      className="relative isolate overflow-hidden scroll-mt-28 bg-background px-4 py-24 sm:px-6 sm:py-32 lg:px-8 dark:bg-black"
+      className="relative isolate overflow-hidden scroll-mt-28 bg-background px-4 py-20 sm:px-6 sm:py-24 lg:px-8 dark:bg-black"
     >
       <div
         aria-hidden="true"
@@ -40,7 +40,7 @@ export function StorySection() {
           </p>
         </header>
 
-        <Timeline data={timelineData} className="mt-16 sm:mt-20" />
+        <Timeline data={timelineData} className="mt-12 sm:mt-16" />
       </div>
     </section>
   )

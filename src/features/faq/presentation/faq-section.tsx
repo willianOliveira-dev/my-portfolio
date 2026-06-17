@@ -38,9 +38,9 @@ export function FaqSection() {
   return (
     <section
       id="faq"
-      className="relative w-full scroll-mt-24 bg-background px-4 py-24 sm:px-8 md:py-32 lg:px-16 xl:px-32"
+      className="relative w-full scroll-mt-24 bg-background px-4 py-20 sm:px-8 md:py-24 lg:px-16 xl:px-32"
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-12">
+      <div className="mx-auto flex max-w-3xl flex-col gap-10">
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             {m.faq_title({}, { locale })}
