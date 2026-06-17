@@ -137,13 +137,13 @@ Abra [http://localhost:3000](http://localhost:3000) no seu navegador.
 
 ## Como o Rate Limiting Funciona
 
-O formulário de contato é protegido por um limite de **3 requisições por IP a cada 30 minutos**, implementado com o algoritmo de **Sliding Window** do Upstash Ratelimit. Caso o limite seja excedido, a API retorna `429 Too Many Requests` e o frontend exibe uma mensagem de erro amigável ao usuário — sem que nenhuma mensagem indesejada chegue à caixa de entrada.
+O formulário de contato é protegido por um limite de **3 requisições por IP a cada 30 minutos**, implementado com o algoritmo de **Sliding Window** do Upstash Ratelimit. Caso o limite seja excedido, a API retorna `429 Too Many Requests` e o frontend exibe uma mensagem de erro amigável ao usuário, sem que nenhuma mensagem indesejada chegue à caixa de entrada.
 
 ---
 
 ## Direitos Autorais e Uso
 
-**© 2025 Willian Oliveira. Todos os direitos reservados.**
+**© 2026 Willian Oliveira. Todos os direitos reservados.**
 
 Este projeto — incluindo seu design, código-fonte, estrutura, textos e componentes — é obra original de Willian Oliveira. **A cópia total ou parcial deste projeto, sua identidade visual, estrutura de componentes ou qualquer ativo sem autorização expressa e por escrito do autor é estritamente proibida e sujeita às penalidades previstas na Lei de Direitos Autorais (Lei nº 9.610/98) e na legislação aplicável.**
 
