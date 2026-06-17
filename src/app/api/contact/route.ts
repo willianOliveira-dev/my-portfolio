@@ -6,11 +6,11 @@ import ContactEmail from "@/emails/contact-email";
 import { z } from "zod";
 import * as React from "react";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_fallback_key");
 
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+  url: process.env.UPSTASH_REDIS_REST_URL || "https://dummy.upstash.io",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "dummy",
 });
 
 const ratelimit = new Ratelimit({
