@@ -1,0 +1,49 @@
+# Licença e Direitos Autorais (Copyright)
+
+> **© 2026 Willian Oliveira. Todos os Direitos Reservados (All Rights Reserved).**
+
+Este documento estabelece os termos legais de uso, cópia e distribuição do código-fonte, design, ativos e arquitetura associados ao repositório deste portfólio.
+
+---
+
+## ⚖️ Termos de Propriedade
+
+Este projeto é uma obra de autoria original protegida por leis de propriedade intelectual, incluindo, mas não se limitando a, as leis de direitos autorais da República Federativa do Brasil (**Lei nº 9.610/98** e **Lei nº 9.609/98**). 
+
+Toda a arquitetura de software, componentes de interface (UI/UX), textos de apresentação, identidade visual e integrações sistêmicas desenvolvidos neste repositório são de propriedade exclusiva de **Willian Oliveira**.
+
+> [!CAUTION]
+> **RESTRIÇÃO TOTAL DE CÓPIA E USO COMERCIAL**
+> É estritamente proibido clonar, copiar, distribuir, modificar, publicar ou utilizar parcial ou integralmente qualquer parte deste código-fonte para a criação de outros portfólios, produtos comerciais ou projetos derivados sem a autorização prévia, expressa e por escrito do autor.
+
+---
+
+## 📖 O que é permitido? (Uso Justo / Fair Use)
+
+Como o código está hospedado publicamente no GitHub, você tem a permissão concedida pelos [Termos de Serviço do GitHub](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) de:
+
+- **Visualizar** o código-fonte para fins de aprendizado e estudo.
+- **Fazer Fork** do repositório em sua própria conta para fins estritos de inspeção pessoal.
+- Usar trechos de conhecimento isolados (como a forma de configurar uma rota ou usar uma biblioteca genérica) para aprendizado pessoal.
+
+---
+
+## 🚫 O que NÃO é permitido?
+
+- Hospedar este site, parcial ou integralmente, alterando o nome para usá-lo como o seu próprio portfólio pessoal.
+- Reutilizar a identidade visual, as animações combinadas e o design da interface sob sua própria autoria.
+- Remover este arquivo de licença ou as menções de autoria do `README.md`.
+- Vender ou monetizar o código deste projeto de qualquer forma.
+
+> [!WARNING]
+> **Consequências Legais**
+> O uso indevido e a apropriação do código-fonte (plágio) caracterizam violação de direitos autorais. O autor reserva-se o direito de solicitar a remoção imediata via DMCA Takedown Notice no GitHub e buscar reparações legais cabíveis em caso de violação comercial ou danos à imagem profissional.
+
+---
+
+## 📬 Contato e Solicitações de Uso
+
+Caso tenha interesse em utilizar parte da arquitetura, adaptar componentes específicos ou propor alguma parceria comercial que envolva o código deste repositório, o consentimento deve ser previamente negociado.
+
+Entre em contato exclusivamente através do e-mail:
+**contact@willianoliveira.dev.br**
