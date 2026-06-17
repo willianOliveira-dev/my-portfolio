@@ -1,63 +1,94 @@
-"use client"
-
+"use client";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  AnimatePresence,
-  motion,
-} from "motion/react"
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react"
-import {
-  IconBrightnessDown,
-  IconBrightnessUp,
-  IconCaretDownFilled,
-  IconCaretLeftFilled,
-  IconCaretRightFilled,
-  IconCaretUpFilled,
-  IconChevronUp,
-  IconCommand,
-  IconMicrophone,
-  IconMoon,
-  IconPlayerSkipForward,
-  IconPlayerTrackNext,
-  IconPlayerTrackPrev,
-  IconSearch,
-  IconTable,
-  IconVolume,
-  IconVolume2,
-  IconVolume3,
-  IconWorld,
-} from "@tabler/icons-react"
+  Command,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ChevronsUp,
+  Menu,
+} from "lucide-react";
 
-import { cn } from "@/lib/utils"
-
-type KeyboardContextType = {
-  lastPressedKey: string | null
-  playSound: (keyCode: string) => void
-  pressSequence: number
-  pressedKeys: Set<string>
-  releaseAll: () => void
-  setPressed: (keyCode: string) => void
-  setReleased: (keyCode: string) => void
+interface KeyObject {
+  label?: string;
+  code?: string;
+  size: number;
+  spacer?: boolean;
+  type?: string;
+  icon?: string;
+}
+interface KeyboardRow {
+  function?: boolean;
+  keys: KeyObject[];
+  nav?: KeyObject[];
+}
+interface InteractiveKeyboardProps {
+  layout?: "standard" | "compact";
+  showFunctionKeys?: boolean;
+  showNavigationCluster?: boolean;
+  activeKeys?: string[];
+  activeKeyGlowColor?: string;
+  activeKeyGlowIntensity?: number;
+  theme?: "cyberpunk" | "minimal" | "retro" | "mechanical" | "neon" | "pastel";
+  keyColor?: string;
+  keyTextColor?: string;
+  accentColor?: string;
+  keyPressedColor?: string;
+  keyPressAnimationDuration?: number;
+  onKeyPress?: (code: string, key?: string) => void;
+  onKeyRelease?: (code: string, key?: string) => void;
+  className?: string;
+  allowPhysicalKeyboard?: boolean;
+  perspective?: number;
+  rotateX?: number;
+  [key: string]: unknown;
 }
 
-type KeyDefinition = {
-  children?: React.ReactNode
-  code?: string
-  className?: string
-  contentClassName?: string
-  containerClassName?: string
+type KeyboardProps = InteractiveKeyboardProps & {
+  enableSound?: boolean;
+  showPreview?: boolean;
+};
+
+interface KeyStyleProps {
+  background: string;
+  color: string;
+  boxShadow: string;
+  textShadow?: string;
+  border: string;
+  fontFamily?: string;
+  fontWeight?: string | number;
+  fontSize?: string;
+  borderRadius?: string;
+  letterSpacing?: string;
+  transform?: string;
+  transition?: string;
+  height?: string;
+  marginBottom?: string;
+  padding?: string;
+  width?: string;
 }
 
-type KeyboardProps = {
-  className?: string
-  enableSound?: boolean
-  showPreview?: boolean
+interface ThemeStyles {
+  keyboard: {
+    background: string;
+    boxShadow: string;
+    border: string;
+    borderRadius?: string;
+    marginBottom?: string;
+    padding?: string;
+    width?: string;
+  };
+  key: KeyStyleProps;
+  keyPressed: KeyStyleProps;
+  keyHover: KeyStyleProps;
+  keyActive?: KeyStyleProps;
+  specialKey?: KeyStyleProps;
+  functionKey?: KeyStyleProps;
+  modifierKey?: KeyStyleProps;
+  spaceKey?: KeyStyleProps;
+  arrowKey?: KeyStyleProps;
 }
 
 const keyDisplayLabels: Record<string, string> = {
@@ -78,7 +109,6 @@ const keyDisplayLabels: Record<string, string> = {
   Enter: "return",
   Equal: "=",
   Escape: "esc",
-  Fn: "fn",
   MetaLeft: "command",
   MetaRight: "command",
   Minus: "-",
@@ -90,7 +120,7 @@ const keyDisplayLabels: Record<string, string> = {
   Slash: "/",
   Space: "space",
   Tab: "tab",
-}
+};
 
 const soundIndexes: Record<string, string> = {
   AltLeft: "56",
@@ -132,7 +162,6 @@ const soundIndexes: Record<string, string> = {
   F10: "68",
   F11: "87",
   F12: "88",
-  Fn: "83",
   KeyA: "30",
   KeyB: "48",
   KeyC: "46",
@@ -170,65 +199,41 @@ const soundIndexes: Record<string, string> = {
   Slash: "53",
   Space: "57",
   Tab: "15",
-}
+};
 
 type SoundConfig = {
-  defines: Record<string, [number, number]>
-  sound: string
-}
-
-const KeyboardContext = createContext<KeyboardContextType | null>(null)
-
-function useKeyboard() {
-  const context = useContext(KeyboardContext)
-
-  if (!context) {
-    throw new Error("useKeyboard must be used within KeyboardProvider")
-  }
-
-  return context
-}
+  defines: Record<string, [number, number]>;
+  sound: string;
+};
 
 function getKeyDisplayLabel(keyCode: string): string {
   if (keyDisplayLabels[keyCode]) {
-    return keyDisplayLabels[keyCode]
+    return keyDisplayLabels[keyCode];
   }
 
   if (keyCode.startsWith("Key")) {
-    return keyCode.slice(3)
+    return keyCode.slice(3);
   }
 
   if (keyCode.startsWith("Digit")) {
-    return keyCode.slice(5)
+    return keyCode.slice(5);
   }
 
-  return keyCode
+  return keyCode;
 }
 
-function KeyboardProvider({
-  children,
-  containerRef,
-  enableSound,
-}: {
-  children: React.ReactNode
-  containerRef: React.RefObject<HTMLDivElement | null>
-  enableSound: boolean
-}) {
-  const audioBufferRef = useRef<AudioBuffer | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const soundConfigRef = useRef<SoundConfig | null>(null)
-  const [isVisible, setIsVisible] = useState(false)
-  const [lastPressedKey, setLastPressedKey] = useState<string | null>(null)
-  const [pressSequence, setPressSequence] = useState(0)
-  const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set())
-  const [soundLoaded, setSoundLoaded] = useState(false)
+function useKeyboardSound(enableSound: boolean) {
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const soundConfigRef = useRef<SoundConfig | null>(null);
+  const [soundLoaded, setSoundLoaded] = useState(false);
 
   useEffect(() => {
     if (!enableSound) {
-      return
+      return;
     }
 
-    let isMounted = true
+    let isMounted = true;
 
     async function loadSound() {
       try {
@@ -236,627 +241,1741 @@ function KeyboardProvider({
           window.AudioContext ||
           (
             window as typeof window & {
-              webkitAudioContext?: typeof AudioContext
+              webkitAudioContext?: typeof AudioContext;
             }
-          ).webkitAudioContext
+          ).webkitAudioContext;
 
         if (!AudioContextConstructor) {
-          return
+          return;
         }
 
         const [configResponse, soundResponse] = await Promise.all([
           fetch("/sounds/config.json"),
           fetch("/sounds/sound.ogg"),
-        ])
+        ]);
 
         if (!configResponse.ok || !soundResponse.ok) {
-          return
+          return;
         }
 
-        const config = (await configResponse.json()) as SoundConfig
-        const arrayBuffer = await soundResponse.arrayBuffer()
-        const audioContext = new AudioContextConstructor()
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        const config = (await configResponse.json()) as SoundConfig;
+        const arrayBuffer = await soundResponse.arrayBuffer();
+        const audioContext = new AudioContextConstructor();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
         if (!isMounted) {
-          void audioContext.close()
-          return
+          void audioContext.close();
+          return;
         }
 
-        soundConfigRef.current = config
-        audioContextRef.current = audioContext
-        audioBufferRef.current = audioBuffer
-        setSoundLoaded(true)
+        soundConfigRef.current = config;
+        audioContextRef.current = audioContext;
+        audioBufferRef.current = audioBuffer;
+        setSoundLoaded(true);
       } catch {
-        setSoundLoaded(false)
+        setSoundLoaded(false);
       }
     }
 
-    void loadSound()
+    void loadSound();
 
     return () => {
-      isMounted = false
-      void audioContextRef.current?.close()
-      audioContextRef.current = null
-      audioBufferRef.current = null
-      soundConfigRef.current = null
-    }
-  }, [enableSound])
+      isMounted = false;
+      void audioContextRef.current?.close();
+      audioContextRef.current = null;
+      audioBufferRef.current = null;
+      soundConfigRef.current = null;
+    };
+  }, [enableSound]);
 
-  const playSound = useCallback(
+  return useCallback(
     (keyCode: string) => {
       if (!enableSound || !soundLoaded) {
-        return
+        return;
       }
 
-      const audioContext = audioContextRef.current
-      const audioBuffer = audioBufferRef.current
-      const soundConfig = soundConfigRef.current
-      const soundIndex = soundIndexes[keyCode]
-      const soundDefinition = soundIndex ? soundConfig?.defines[soundIndex] : null
+      const audioContext = audioContextRef.current;
+      const audioBuffer = audioBufferRef.current;
+      const soundConfig = soundConfigRef.current;
+      const soundIndex = soundIndexes[keyCode];
+      const soundDefinition = soundIndex ? soundConfig?.defines[soundIndex] : null;
 
       if (!audioContext || !audioBuffer || !soundDefinition) {
-        return
+        return;
       }
 
       void (async () => {
         if (audioContext.state === "suspended") {
-          await audioContext.resume()
+          await audioContext.resume();
         }
 
-        const [startMs, durationMs] = soundDefinition
-        const source = audioContext.createBufferSource()
-        const gain = audioContext.createGain()
+        const [startMs, durationMs] = soundDefinition;
+        const source = audioContext.createBufferSource();
+        const gain = audioContext.createGain();
 
-        gain.gain.value = 0.52
-        source.buffer = audioBuffer
-        source.connect(gain)
-        gain.connect(audioContext.destination)
-        source.start(0, startMs / 1000, Math.min(durationMs / 1000, 0.16))
-      })()
+        gain.gain.value = 0.52;
+        source.buffer = audioBuffer;
+        source.connect(gain);
+        gain.connect(audioContext.destination);
+        source.start(0, startMs / 1000, Math.min(durationMs / 1000, 0.16));
+      })();
     },
-    [enableSound, soundLoaded]
-  )
+    [enableSound, soundLoaded],
+  );
+}
 
-  const setPressed = useCallback((keyCode: string) => {
-    setPressedKeys((currentKeys) => new Set(currentKeys).add(keyCode))
-    setLastPressedKey(keyCode)
-    setPressSequence((currentSequence) => currentSequence + 1)
-    playSound(keyCode)
-  }, [playSound])
+const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
+  layout = "standard",
+  showFunctionKeys = true,
+  showNavigationCluster = true,
+  activeKeys = [],
+  activeKeyGlowColor = "#6366f1",
+  activeKeyGlowIntensity = 0.8,
+  theme = "cyberpunk",
+  keyColor = "#2a2a2a",
+  keyTextColor = "#ffffff",
+  accentColor = "#6366f1",
+  keyPressedColor = "#333333",
+  keyPressAnimationDuration = 150,
+  onKeyPress = () => {},
+  onKeyRelease = () => {},
+  className = "",
+  allowPhysicalKeyboard = true,
+  perspective = 1000,
+  rotateX = 10,
+  ...props
+}) => {
+  const [pressedKeys, setPressedKeys] = useState<Set<string>>(new Set());
+  const getKeyboardLayout = (): KeyboardRow[] => {
+    switch (layout) {
+      case "compact":
+        return getStandardLayout().filter((row) => !row.function);
+      case "standard":
+      default:
+        return getStandardLayout();
+    }
+  };
 
-  const setReleased = useCallback((keyCode: string) => {
-    setPressedKeys((currentKeys) => {
-      const nextKeys = new Set(currentKeys)
-      nextKeys.delete(keyCode)
-      return nextKeys
-    })
-  }, [])
-
-  const releaseAll = useCallback(() => {
-    setPressedKeys(new Set())
-  }, [])
+  const getStandardLayout = (): KeyboardRow[] => {
+    return [
+      {
+        function: true,
+        keys: [
+          { label: "Esc", code: "Escape", size: 1 },
+          { spacer: true, size: 1 },
+          { label: "F1", code: "F1", size: 1 },
+          { label: "F2", code: "F2", size: 1 },
+          { label: "F3", code: "F3", size: 1 },
+          { label: "F4", code: "F4", size: 1 },
+          { spacer: true, size: 0.5 },
+          { label: "F5", code: "F5", size: 1 },
+          { label: "F6", code: "F6", size: 1 },
+          { label: "F7", code: "F7", size: 1 },
+          { label: "F8", code: "F8", size: 1 },
+          { spacer: true, size: 0.5 },
+          { label: "F9", code: "F9", size: 1 },
+          { label: "F10", code: "F10", size: 1 },
+          { label: "F11", code: "F11", size: 1 },
+          { label: "F12", code: "F12", size: 1 },
+        ],
+        nav: [
+          { spacer: true, size: 0.5 },
+          { type: "light", size: 0.5, code: "light1" },
+          { type: "light", size: 0.5, code: "light2" },
+          { type: "light", size: 0.5, code: "light3" },
+        ],
+      },
+      {
+        keys: [
+          { label: "`", code: "Backquote", size: 1 },
+          { label: "1", code: "Digit1", size: 1 },
+          { label: "2", code: "Digit2", size: 1 },
+          { label: "3", code: "Digit3", size: 1 },
+          { label: "4", code: "Digit4", size: 1 },
+          { label: "5", code: "Digit5", size: 1 },
+          { label: "6", code: "Digit6", size: 1 },
+          { label: "7", code: "Digit7", size: 1 },
+          { label: "8", code: "Digit8", size: 1 },
+          { label: "9", code: "Digit9", size: 1 },
+          { label: "0", code: "Digit0", size: 1 },
+          { label: "-", code: "Minus", size: 1 },
+          { label: "=", code: "Equal", size: 1 },
+          { label: "Backspace", code: "Backspace", size: 2 },
+        ],
+        nav: [
+          { label: "Del", code: "Delete", size: 1 },
+          { label: "End", code: "End", size: 1 },
+          { label: "PgDn", code: "PageDown", size: 1 },
+        ],
+      },
+      {
+        keys: [
+          { label: "Tab", code: "Tab", size: 1.5 },
+          { label: "Q", code: "KeyQ", size: 1 },
+          { label: "W", code: "KeyW", size: 1 },
+          { label: "E", code: "KeyE", size: 1 },
+          { label: "R", code: "KeyR", size: 1 },
+          { label: "T", code: "KeyT", size: 1 },
+          { label: "Y", code: "KeyY", size: 1 },
+          { label: "U", code: "KeyU", size: 1 },
+          { label: "I", code: "KeyI", size: 1 },
+          { label: "O", code: "KeyO", size: 1 },
+          { label: "P", code: "KeyP", size: 1 },
+          { label: "[", code: "BracketLeft", size: 1 },
+          { label: "]", code: "BracketRight", size: 1 },
+          { label: "\\", code: "Backslash", size: 1.5 },
+        ],
+        nav: [
+          { label: "Ins", code: "Insert", size: 1 },
+          { label: "Home", code: "Home", size: 1 },
+          { label: "PgUp", code: "PageUp", size: 1 },
+        ],
+      },
+      {
+        keys: [
+          { label: "Caps", code: "CapsLock", size: 1.75, icon: "capslock" },
+          { label: "A", code: "KeyA", size: 1 },
+          { label: "S", code: "KeyS", size: 1 },
+          { label: "D", code: "KeyD", size: 1 },
+          { label: "F", code: "KeyF", size: 1 },
+          { label: "G", code: "KeyG", size: 1 },
+          { label: "H", code: "KeyH", size: 1 },
+          { label: "J", code: "KeyJ", size: 1 },
+          { label: "K", code: "KeyK", size: 1 },
+          { label: "L", code: "KeyL", size: 1 },
+          { label: ";", code: "Semicolon", size: 1 },
+          { label: "'", code: "Quote", size: 1 },
+          { label: "Enter", code: "Enter", size: 2.25 },
+        ],
+        nav: [
+          { label: "Print", code: "PrintScreen", size: 1 },
+          { label: "Scroll", code: "ScrollLock", size: 1 },
+          { label: "Pause", code: "Pause", size: 1 },
+        ],
+      },
+      {
+        keys: [
+          { label: "Shift", code: "ShiftLeft", size: 2.25 },
+          { label: "Z", code: "KeyZ", size: 1 },
+          { label: "X", code: "KeyX", size: 1 },
+          { label: "C", code: "KeyC", size: 1 },
+          { label: "V", code: "KeyV", size: 1 },
+          { label: "B", code: "KeyB", size: 1 },
+          { label: "N", code: "KeyN", size: 1 },
+          { label: "M", code: "KeyM", size: 1 },
+          { label: ",", code: "Comma", size: 1 },
+          { label: ".", code: "Period", size: 1 },
+          { label: "/", code: "Slash", size: 1 },
+          { label: "Shift", code: "ShiftRight", size: 2.75 },
+        ],
+        nav: [
+          { spacer: true, size: 1 },
+          { label: "", code: "ArrowUp", size: 1, icon: "arrowup" },
+          { spacer: true, size: 1 },
+        ],
+      },
+      {
+        keys: [
+          { label: "Ctrl", code: "ControlLeft", size: 1.25 },
+          { label: "", code: "MetaLeft", size: 1.25, icon: "windows" },
+          { label: "Alt", code: "AltLeft", size: 1.25 },
+          { label: "Space", code: "Space", size: 6.25 },
+          { label: "Alt", code: "AltRight", size: 1.25 },
+          { label: "", code: "MetaRight", size: 1.25, icon: "windows" },
+          { label: "", code: "ContextMenu", size: 1.25, icon: "menu" },
+          { label: "Ctrl", code: "ControlRight", size: 1.25 },
+        ],
+        nav: [
+          { label: "", code: "ArrowLeft", size: 1, icon: "arrowleft" },
+          { label: "", code: "ArrowDown", size: 1, icon: "arrowdown" },
+          { label: "", code: "ArrowRight", size: 1, icon: "arrowright" },
+        ],
+      },
+    ];
+  };
 
   useEffect(() => {
-    const element = containerRef.current
+    if (!allowPhysicalKeyboard) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      setPressedKeys((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(e.code);
+        return newSet;
+      });
+
+      onKeyPress(e.code, e.key);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      setPressedKeys((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(e.code);
+        return newSet;
+      });
+      onKeyRelease(e.code, e.key);
+    };
+    if (allowPhysicalKeyboard) {
+      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("keyup", handleKeyUp);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [allowPhysicalKeyboard, onKeyPress, onKeyRelease]);
+
+  const handleKeyDown = (code: string) => {
+    setPressedKeys((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(code);
+      return newSet;
+    });
+
+    onKeyPress(code);
+  };
+
+  const handleKeyUp = (code: string) => {
+    setPressedKeys((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(code);
+      return newSet;
+    });
+
+    onKeyRelease(code);
+  };
+
+  const getThemeStyles = (): ThemeStyles => {
+    switch (theme) {
+      case "minimal":
+        return {
+          keyboard: {
+            background: "linear-gradient(to bottom, #ffffff, #f8f9fa)",
+            boxShadow:
+              "0 10px 30px rgba(0, 0, 0, 0.08), 0 6px 10px rgba(0, 0, 0, 0.05)",
+            border: "1px solid rgba(0, 0, 0, 0.06)",
+            borderRadius: "10px",
+          },
+          key: {
+            background: "linear-gradient(to bottom, #ffffff, #f7f7f9)",
+            color: "#333333",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            textShadow: "none",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            fontWeight: "500",
+            fontSize: "11px",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+          keyPressed: {
+            background: "linear-gradient(to bottom, #f0f0f0, #e8e8e8)",
+            boxShadow: "inset 0 1px 2px rgba(0, 0, 0, 0.08)",
+            color: accentColor,
+            border: "1px solid rgba(0, 0, 0, 0.12)",
+            transform: "translateY(1px)",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.05s ease",
+          },
+          keyHover: {
+            background: "linear-gradient(to bottom, #ffffff, #f9f9f9)",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            color: accentColor,
+            border: "1px solid rgba(0, 0, 0, 0.1)",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+          keyActive: {
+            background: "linear-gradient(to bottom, #ffffff, #f5f5f7)",
+            boxShadow: `0 0 10px ${activeKeyGlowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.8)`,
+            color: activeKeyGlowColor,
+            border: `1px solid ${activeKeyGlowColor}`,
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: `0 0 5px ${activeKeyGlowColor}`,
+            borderRadius: "5px",
+            transition: "all 0.1s ease",
+          },
+          specialKey: {
+            background: "linear-gradient(to bottom, #f8f8fa, #eff0f2)",
+            color: "#555555",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            fontSize: "10px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+          functionKey: {
+            background: "linear-gradient(to bottom, #f2f2f4, #eaeaec)",
+            color: "#666666",
+            fontSize: "9px",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+          modifierKey: {
+            background: "linear-gradient(to bottom, #f2f2f4, #eaeaec)",
+            color: "#555555",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            fontSize: "10px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+          spaceKey: {
+            background: "linear-gradient(to bottom, #ffffff, #f8f8f8)",
+            color: "#333333",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+          arrowKey: {
+            background: "linear-gradient(to bottom, #f2f2f4, #eaeaec)",
+            color: "#555555",
+            boxShadow:
+              "0 2px 3px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+            border: "1px solid rgba(0, 0, 0, 0.08)",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.15s ease",
+          },
+        };
+
+      case "retro":
+        return {
+          keyboard: {
+            background: "linear-gradient(to bottom, #f5f0e8, #e8e0d0)",
+            boxShadow:
+              "0 8px 20px rgba(120, 100, 80, 0.2), 0 4px 8px rgba(120, 100, 80, 0.1), inset 0 1px 0 #fff",
+            border: "2px solid #d0c0a0",
+            borderRadius: "8px",
+            padding: "8px",
+          },
+          key: {
+            background: "linear-gradient(to bottom, #fff8e8, #f0e8d8)",
+            color: "#705030",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            textShadow: "none",
+            border: "1px solid #d0c0a0",
+            fontFamily: '"Courier New", monospace',
+            fontWeight: "600",
+            fontSize: "11px",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          keyPressed: {
+            background: "linear-gradient(to bottom, #e8d8c0, #d8c8b0)",
+            boxShadow: "0 0 0 #c0b090, inset 0 1px 2px rgba(120, 100, 80, 0.2)",
+            color: "#604020",
+            textShadow: "none",
+            border: "1px solid #c0b090",
+            transform: "translateY(4px)",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            borderRadius: "6px",
+            marginBottom: "0px",
+            transition: "all 0.05s ease",
+          },
+          keyHover: {
+            background: "linear-gradient(to bottom, #fffaf0, #f8f0e0)",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            color: "#604020",
+            border: "1px solid #c0b090",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            textShadow: "none",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          keyActive: {
+            background: "linear-gradient(to bottom, #fff8e8, #f0e8d8)",
+            boxShadow: `0 4px 0 #c0b090, 0 0 15px ${activeKeyGlowColor}, inset 0 1px 0 #fffaf0`,
+            color: activeKeyGlowColor,
+            textShadow: `0 0 5px ${activeKeyGlowColor}`,
+            border: `1px solid ${activeKeyGlowColor}`,
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          specialKey: {
+            background: "linear-gradient(to bottom, #f0e8d8, #e0d0c0)",
+            color: "#604020",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            border: "1px solid #d0c0a0",
+            fontSize: "10px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            textShadow: "none",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          functionKey: {
+            background: "linear-gradient(to bottom, #e8d8c0, #d8c8b0)",
+            color: "#604020",
+            fontSize: "9px",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            border: "1px solid #d0c0a0",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            textShadow: "none",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          modifierKey: {
+            background: "linear-gradient(to bottom, #e8d8c0, #d8c8b0)",
+            color: "#604020",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            border: "1px solid #d0c0a0",
+            fontSize: "10px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            textShadow: "none",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          spaceKey: {
+            background: "linear-gradient(to bottom, #fff8e8, #f0e8d8)",
+            color: "#705030",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            border: "1px solid #d0c0a0",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            textShadow: "none",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+          arrowKey: {
+            background: "linear-gradient(to bottom, #e8d8c0, #d8c8b0)",
+            color: "#604020",
+            boxShadow: "0 4px 0 #c0b090, inset 0 1px 0 #fffaf0",
+            border: "1px solid #d0c0a0",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Courier New", monospace',
+            textShadow: "none",
+            borderRadius: "6px",
+            transition: "all 0.12s ease-out",
+            marginBottom: "4px",
+          },
+        };
+
+      case "cyberpunk":
+        return {
+          keyboard: {
+            background: `#1A1A1A`,
+            boxShadow: `0 15px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.5)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -20)}`,
+            borderRadius: "12px",
+          },
+          key: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(keyColor, 10)}, ${keyColor})`,
+            color: keyTextColor,
+            boxShadow: `0 3px 0 ${adjustColorBrightness(
+              keyColor,
+              -20,
+            )}, 0 0 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            textShadow: `0 0 5px rgba(255, 255, 255, 0.3)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -10)}`,
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            fontWeight: "600",
+            fontSize: "11px",
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          keyPressed: {
+            background: `linear-gradient(145deg, ${keyPressedColor}, ${adjustColorBrightness(keyPressedColor, -10)})`,
+            boxShadow: `0 0 0 ${adjustColorBrightness(keyColor, -20)}, 0 0 15px rgba(${hexToRgb(
+              accentColor,
+            )}, 0.5), inset 0 1px 2px rgba(0, 0, 0, 0.3)`,
+            color: accentColor,
+            textShadow: `0 0 8px rgba(${hexToRgb(accentColor)}, 0.7)`,
+            border: `1px solid ${adjustColorBrightness(keyPressedColor, 10)}`,
+            transform: "translateY(2px)",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.08s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          keyHover: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(
+              keyColor,
+              15,
+            )}, ${adjustColorBrightness(keyColor, 5)})`,
+            boxShadow: `0 3px 0 ${adjustColorBrightness(keyColor, -20)}, 0 0 12px rgba(${hexToRgb(
+              accentColor,
+            )}, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.15)`,
+            color: accentColor,
+            textShadow: `0 0 8px rgba(${hexToRgb(accentColor)}, 0.5)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, 0)}`,
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          keyActive: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(keyColor, 10)}, ${keyColor})`,
+            boxShadow: `0 3px 0 ${adjustColorBrightness(keyColor, -20)}, 0 0 20px rgba(${hexToRgb(
+              activeKeyGlowColor,
+            )}, ${activeKeyGlowIntensity}), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            color: activeKeyGlowColor,
+            textShadow: `0 0 10px rgba(${hexToRgb(activeKeyGlowColor)}, 0.9)`,
+            border: `1px solid ${activeKeyGlowColor}`,
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          specialKey: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(
+              keyColor,
+              0,
+            )}, ${adjustColorBrightness(keyColor, -10)})`,
+            color: adjustColorBrightness(keyTextColor, -10),
+            boxShadow: `0 3px 0 ${adjustColorBrightness(
+              keyColor,
+              -20,
+            )}, 0 0 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -10)}`,
+            fontSize: "10px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            textShadow: `0 0 5px rgba(255, 255, 255, 0.3)`,
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          functionKey: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(
+              keyColor,
+              -5,
+            )}, ${adjustColorBrightness(keyColor, -15)})`,
+            color: adjustColorBrightness(keyTextColor, -15),
+            fontSize: "9px",
+            boxShadow: `0 3px 0 ${adjustColorBrightness(
+              keyColor,
+              -20,
+            )}, 0 0 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -10)}`,
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            textShadow: `0 0 5px rgba(255, 255, 255, 0.3)`,
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          modifierKey: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(
+              keyColor,
+              -5,
+            )}, ${adjustColorBrightness(keyColor, -15)})`,
+            color: adjustColorBrightness(keyTextColor, -5),
+            boxShadow: `0 3px 0 ${adjustColorBrightness(
+              keyColor,
+              -20,
+            )}, 0 0 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -10)}`,
+            fontSize: "10px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            textShadow: `0 0 5px rgba(255, 255, 255, 0.3)`,
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          spaceKey: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(
+              keyColor,
+              5,
+            )}, ${adjustColorBrightness(keyColor, -5)})`,
+            color: keyTextColor,
+            boxShadow: `0 3px 0 ${adjustColorBrightness(
+              keyColor,
+              -20,
+            )}, 0 0 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -10)}`,
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            textShadow: `0 0 5px rgba(255, 255, 255, 0.3)`,
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+          arrowKey: {
+            background: `linear-gradient(145deg, ${adjustColorBrightness(
+              keyColor,
+              -5,
+            )}, ${adjustColorBrightness(keyColor, -15)})`,
+            color: accentColor,
+            boxShadow: `0 3px 0 ${adjustColorBrightness(
+              keyColor,
+              -20,
+            )}, 0 0 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+            border: `1px solid ${adjustColorBrightness(keyColor, -10)}`,
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"Inter", "SF Pro Display", system-ui, sans-serif',
+            textShadow: `0 0 5px rgba(${hexToRgb(accentColor)}, 0.5)`,
+            borderRadius: "6px",
+            letterSpacing: "0.5px",
+            transition: "all 0.15s cubic-bezier(0.23, 1, 0.32, 1)",
+          },
+        };
+      case "neon":
+        return {
+          keyboard: {
+            background: "linear-gradient(to bottom, #121212, #1a1a1a)",
+            boxShadow:
+              "0 15px 40px rgba(0, 0, 0, 0.4), 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+            border: "1px solid #333",
+            borderRadius: "12px",
+            padding: "10px",
+          },
+          key: {
+            background: "linear-gradient(to bottom, #222222, #111111)",
+            color: "#00ffcc",
+            boxShadow:
+              "0 3px 0 #000, 0 0 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            textShadow: "0 0 8px rgba(0, 255, 204, 0.7)",
+            border: "1px solid #333",
+            fontFamily: '"Orbitron", sans-serif',
+            fontWeight: "500",
+            fontSize: "11px",
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          keyPressed: {
+            background: "linear-gradient(to bottom, #111111, #0a0a0a)",
+            boxShadow:
+              "0 0 0 #000, 0 0 15px rgba(0, 255, 204, 0.7), inset 0 1px 2px rgba(0, 0, 0, 0.5)",
+            color: "#ffffff",
+            textShadow: "0 0 10px rgba(0, 255, 204, 1)",
+            border: "1px solid #00ffcc",
+            transform: "translateY(3px)",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            borderRadius: "6px",
+            transition: "all 0.05s ease",
+          },
+          keyHover: {
+            background: "linear-gradient(to bottom, #2a2a2a, #191919)",
+            boxShadow:
+              "0 3px 0 #000, 0 0 12px rgba(0, 255, 204, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1)",
+            color: "#ffffff",
+            textShadow: "0 0 8px rgba(0, 255, 204, 0.8)",
+            border: "1px solid #00aa88",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          keyActive: {
+            background: "linear-gradient(to bottom, #222222, #111111)",
+            boxShadow:
+              "0 3px 0 #000, 0 0 20px rgba(0, 255, 204, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            color: "#ffffff",
+            textShadow: "0 0 15px rgba(0, 255, 204, 1)",
+            border: "1px solid #00ffcc",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          specialKey: {
+            background: "linear-gradient(to bottom, #191919, #0d0d0d)",
+            color: "#ff3399",
+            boxShadow:
+              "0 3px 0 #000, 0 0 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #333",
+            fontSize: "10px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            textShadow: "0 0 8px rgba(255, 51, 153, 0.7)",
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          functionKey: {
+            background: "linear-gradient(to bottom, #191919, #0d0d0d)",
+            color: "#3399ff",
+            fontSize: "9px",
+            boxShadow:
+              "0 3px 0 #000, 0 0 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #333",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            textShadow: "0 0 8px rgba(51, 153, 255, 0.7)",
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          modifierKey: {
+            background: "linear-gradient(to bottom, #191919, #0d0d0d)",
+            color: "#ffcc00",
+            boxShadow:
+              "0 3px 0 #000, 0 0 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #333",
+            fontSize: "10px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            textShadow: "0 0 8px rgba(255, 204, 0, 0.7)",
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          spaceKey: {
+            background: "linear-gradient(to bottom, #222222, #111111)",
+            color: "#00ffcc",
+            boxShadow:
+              "0 3px 0 #000, 0 0 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #333",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            textShadow: "0 0 8px rgba(0, 255, 204, 0.7)",
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+          arrowKey: {
+            background: "linear-gradient(to bottom, #191919, #0d0d0d)",
+            color: "#ff9900",
+            boxShadow:
+              "0 3px 0 #000, 0 0 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #333",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Orbitron", sans-serif',
+            textShadow: "0 0 8px rgba(255, 153, 0, 0.7)",
+            borderRadius: "6px",
+            transition: "all 0.15s ease",
+          },
+        };
+
+      case "pastel":
+        return {
+          keyboard: {
+            background: "linear-gradient(to bottom, #f0e6f6, #e7ddf0)",
+            boxShadow:
+              "0 12px 30px rgba(200, 180, 220, 0.3), 0 8px 15px rgba(200, 180, 220, 0.2)",
+            border: "1px solid #d8cceb",
+            borderRadius: "16px",
+            padding: "12px",
+          },
+          key: {
+            background: "linear-gradient(to bottom, #ffffff, #f5f0f9)",
+            color: "#7b6d8d",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 5px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            textShadow: "none",
+            border: "1px solid #e2d7f0",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            fontWeight: "500",
+            fontSize: "11px",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          keyPressed: {
+            background: "linear-gradient(to bottom, #f0e6f9, #e7ddf5)",
+            boxShadow: "0 0 0 #d8cceb, inset 0 1px 2px rgba(0, 0, 0, 0.05)",
+            color: "#9370db",
+            textShadow: "none",
+            border: "1px solid #d8cceb",
+            transform: "translateY(3px)",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            borderRadius: "10px",
+            transition: "all 0.1s ease",
+          },
+          keyHover: {
+            background: "linear-gradient(to bottom, #ffffff, #f9f5fc)",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 8px rgba(155, 122, 188, 0.2), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            color: "#9370db",
+            border: "1px solid #d8cceb",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            textShadow: "none",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          keyActive: {
+            background: "linear-gradient(to bottom, #ffffff, #f5f0f9)",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 12px rgba(155, 122, 188, 0.4), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            color: "#9370db",
+            textShadow: "0 0 3px rgba(155, 122, 188, 0.3)",
+            border: "1px solid #b79ce8",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          specialKey: {
+            background: "linear-gradient(to bottom, #f9f0fc, #f0e6f6)",
+            color: "#9382ab",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 5px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            border: "1px solid #e2d7f0",
+            fontSize: "10px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            textShadow: "none",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          functionKey: {
+            background: "linear-gradient(to bottom, #f0e6f6, #e7ddf0)",
+            color: "#a58cc4",
+            fontSize: "9px",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 5px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            border: "1px solid #e2d7f0",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            textShadow: "none",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          modifierKey: {
+            background: "linear-gradient(to bottom, #f0e6f6, #e7ddf0)",
+            color: "#9382ab",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 5px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            border: "1px solid #e2d7f0",
+            fontSize: "10px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            textShadow: "none",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          spaceKey: {
+            background: "linear-gradient(to bottom, #ffffff, #f5f0f9)",
+            color: "#7b6d8d",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 5px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            border: "1px solid #e2d7f0",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            textShadow: "none",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+          arrowKey: {
+            background: "linear-gradient(to bottom, #f0e6f6, #e7ddf0)",
+            color: "#b79ce8",
+            boxShadow:
+              "0 3px 0 #d8cceb, 0 0 5px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 1)",
+            border: "1px solid #e2d7f0",
+            fontSize: "11px",
+            fontWeight: "500",
+            fontFamily: '"Quicksand", "Avenir Next", sans-serif',
+            textShadow: "none",
+            borderRadius: "10px",
+            transition: "all 0.2s ease",
+          },
+        };
+
+      case "mechanical":
+        return {
+          keyboard: {
+            background: "linear-gradient(to bottom, #2c2c2c, #1a1a1a)",
+            boxShadow:
+              "0 12px 30px rgba(0, 0, 0, 0.5), 0 8px 15px rgba(0, 0, 0, 0.4)",
+            border: "2px solid #000",
+            borderRadius: "8px",
+            padding: "10px",
+          },
+          key: {
+            background: "linear-gradient(to bottom, #363636, #222222)",
+            color: "#ddd",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            textShadow: "none",
+            border: "1px solid #111",
+            fontFamily: '"IBM Plex Mono", monospace',
+            fontWeight: "600",
+            fontSize: "11px",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+          keyPressed: {
+            background: "linear-gradient(to bottom, #222222, #1a1a1a)",
+            boxShadow: "0 0 0 #000, inset 0 0 10px rgba(0, 0, 0, 0.8)",
+            color: "#fff",
+            textShadow: "none",
+            border: "1px solid #000",
+            transform: "translateY(2px)",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            borderRadius: "5px",
+            transition: "all 0.02s ease",
+            height: "40px",
+          },
+          keyHover: {
+            background: "linear-gradient(to bottom, #3a3a3a, #262626)",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.08)",
+            color: "#fff",
+            border: "1px solid #111",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+          keyActive: {
+            background: "linear-gradient(to bottom, #363636, #222222)",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            color: "#ff7700",
+            textShadow: "0 0 5px rgba(255, 119, 0, 0.5)",
+            border: "1px solid #ff7700",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+          specialKey: {
+            background: "linear-gradient(to bottom, #2d2d2d, #1d1d1d)",
+            color: "#aaa",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #111",
+            fontSize: "10px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+          functionKey: {
+            background: "linear-gradient(to bottom, #2a2a2a, #1a1a1a)",
+            color: "#888",
+            fontSize: "9px",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #111",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "30px",
+          },
+          modifierKey: {
+            background: "linear-gradient(to bottom, #2d2d2d, #1d1d1d)",
+            color: "#bbb",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #111",
+            fontSize: "10px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+          spaceKey: {
+            background: "linear-gradient(to bottom, #363636, #222222)",
+            color: "#ddd",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #111",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+          arrowKey: {
+            background: "linear-gradient(to bottom, #2d2d2d, #1d1d1d)",
+            color: "#ff7700",
+            boxShadow:
+              "0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 5px rgba(255, 255, 255, 0.05)",
+            border: "1px solid #111",
+            fontSize: "11px",
+            fontWeight: "600",
+            fontFamily: '"IBM Plex Mono", monospace',
+            textShadow: "none",
+            borderRadius: "5px",
+            transition: "all 0.08s ease",
+            height: "40px",
+          },
+        };
+    }
+  };
+  const getKeyStyle = (
+    key: KeyObject,
+    isPressed: boolean,
+    isActive: boolean,
+  ) => {
+    const size = key.size || 1;
+    const keyType = getKeyType(key);
+    let baseStyle = { ...themeStyles.key };
+    if (keyType === "special" && themeStyles.specialKey) {
+      baseStyle = { ...baseStyle, ...themeStyles.specialKey };
+    } else if (keyType === "function" && themeStyles.functionKey) {
+      baseStyle = { ...baseStyle, ...themeStyles.functionKey };
+    } else if (keyType === "modifier" && themeStyles.modifierKey) {
+      baseStyle = { ...baseStyle, ...themeStyles.modifierKey };
+    } else if (keyType === "space" && themeStyles.spaceKey) {
+      baseStyle = { ...baseStyle, ...themeStyles.spaceKey };
+    } else if (keyType === "arrow" && themeStyles.arrowKey) {
+      baseStyle = { ...baseStyle, ...themeStyles.arrowKey };
+    }
+    if (isActive && themeStyles.keyActive) {
+      baseStyle = { ...baseStyle, ...themeStyles.keyActive };
+    }
+    return {
+      position: "relative" as const,
+      width: `${calcKeyWidth(size)}px`,
+      height: `${keyHeight}px`,
+      ...(isPressed ? { ...baseStyle, ...themeStyles.keyPressed } : baseStyle),
+      borderRadius: baseStyle.borderRadius || "4px",
+      display: "flex" as const,
+      justifyContent: "center" as const,
+      alignItems: "center" as const,
+      cursor: "pointer",
+      userSelect: "none" as const,
+      transition: `all ${keyPressAnimationDuration}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+      transform: isPressed
+        ? themeStyles.keyPressed.transform || "translateY(2px)"
+        : "translateY(0)",
+      fontSize: baseStyle.fontSize || "11px",
+      fontWeight: baseStyle.fontWeight || 500,
+      fontFamily: baseStyle.fontFamily || "inherit",
+      padding: "0",
+      margin: "0",
+      letterSpacing: baseStyle.letterSpacing || "normal",
+      willChange: "transform, box-shadow",
+    };
+  };
+  function adjustColorBrightness(hex: string, percent: number): string {
+    const num = Number.parseInt(hex.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = ((num >> 8) & 0x00ff) + amt;
+    const B = (num & 0x0000ff) + amt;
+
+    return (
+      "#" +
+      (
+        0x1000000 +
+        (R < 255 ? (R < 0 ? 0 : R) : 255) * 0x10000 +
+        (G < 255 ? (G < 0 ? 0 : G) : 255) * 0x100 +
+        (B < 255 ? (B < 0 ? 0 : B) : 255)
+      )
+        .toString(16)
+        .slice(1)
+    );
+  }
+
+  function hexToRgb(hex: string): string {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? `${Number.parseInt(result[1], 16)}, ${Number.parseInt(result[2], 16)}, ${Number.parseInt(result[3], 16)}`
+      : "0, 255, 255";
+  }
+  const getKeyType = (key: KeyObject): string => {
+    if (!key.code) return "regular";
+    if (key.type === "numpad") return "numpad";
+    if (["Space"].includes(key.code)) return "space";
+    if (
+      [
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F11",
+        "F12",
+        "Escape",
+      ].includes(key.code)
+    )
+      return "function";
+    if (
+      [
+        "ShiftLeft",
+        "ShiftRight",
+        "ControlLeft",
+        "ControlRight",
+        "AltLeft",
+        "AltRight",
+        "MetaLeft",
+        "MetaRight",
+        "CapsLock",
+      ].includes(key.code)
+    )
+      return "modifier";
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key.code))
+      return "arrow";
+    if (
+      [
+        "Backspace",
+        "Tab",
+        "Enter",
+        "Delete",
+        "Home",
+        "End",
+        "PageUp",
+        "PageDown",
+        "Insert",
+        "PrintScreen",
+        "ScrollLock",
+        "Pause",
+        "ContextMenu",
+      ].includes(key.code)
+    )
+      return "special";
+
+    return "regular";
+  };
+  const isKeyActive = (code: string | undefined): boolean => {
+    if (!code) return false;
+    return activeKeys.includes(code);
+  };
+
+  const renderKeyIcon = (key: KeyObject) => {
+    if (!key.icon) return null;
+
+    switch (key.icon) {
+      case "windows":
+        return <Command className="h-3 w-3" />;
+      case "menu":
+        return <Menu className="h-3 w-3" />;
+      case "capslock":
+        return <ChevronsUp className="h-3 w-3 mr-1" />;
+      case "arrowup":
+        return <ArrowUp className="h-3 w-3" />;
+      case "arrowdown":
+        return <ArrowDown className="h-3 w-3" />;
+      case "arrowleft":
+        return <ArrowLeft className="h-3 w-3" />;
+      case "arrowright":
+        return <ArrowRight className="h-3 w-3" />;
+      default:
+        return null;
+    }
+  };
+
+  const themeStyles = getThemeStyles();
+  const keyboardLayout = getKeyboardLayout();
+  const keyUnit = 40;
+  const keySpacing = 6;
+  const keyHeight = 40;
+  const calcKeyWidth = (size: number): number =>
+    keyUnit * size + keySpacing * (size - 1);
+  const keyboardStyle = {
+    ...themeStyles.keyboard,
+    display: "flex" as const,
+    flexDirection: "column" as const,
+    padding: "20px",
+    borderRadius: themeStyles.keyboard.borderRadius || "10px",
+    transform: `perspective(${perspective}px) rotateX(${rotateX}deg)`,
+    position: "relative" as const,
+    gap: `${keySpacing}px`,
+    maxWidth: "fit-content",
+    transition: "all 0.3s ease",
+  };
+  const calculateMainRowWidth = (row: KeyboardRow): number => {
+    let totalWidth = 0;
+    for (const key of row.keys) {
+      if (key.spacer) {
+        totalWidth += calcKeyWidth(key.size);
+      } else if (key.type === "light") {
+        totalWidth += 8 + (key.size || 0.5) * 4;
+      } else {
+        totalWidth += calcKeyWidth(key.size);
+      }
+    }
+    if (row.keys.length > 0) {
+      totalWidth += (row.keys.length - 1) * keySpacing;
+    }
+    return totalWidth;
+  };
+  const calculateMaxMainRowWidth = (): number => {
+    let maxWidth = 0;
+    for (const row of keyboardLayout) {
+      if (row.keys.length > 0) {
+        const rowWidth = calculateMainRowWidth(row);
+        maxWidth = Math.max(maxWidth, rowWidth);
+      }
+    }
+    return maxWidth;
+  };
+
+  const maxMainRowWidth = calculateMaxMainRowWidth();
+  return (
+    <div
+      className={`keyboard-container ${className}`}
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "20px",
+      }}
+      {...props}
+    >
+      <div
+        className="keyboard-wrapper"
+        style={{ display: "flex", gap: "20px" }}
+      >
+        <div className="keyboard" style={keyboardStyle}>
+          {keyboardLayout.map((row, rowIndex) => {
+            if (row.function && !showFunctionKeys) return null;
+            const mainRowWidth = calculateMainRowWidth(row);
+            return (
+              <div
+                key={`row-${rowIndex}`}
+                className="keyboard-row"
+                style={{
+                  display: "flex",
+                  gap: `${keySpacing}px`,
+                  position: "relative",
+                  marginTop: row.function && rowIndex === 0 ? "10px" : "0",
+                  justifyContent: "flex-start",
+                }}
+              >
+                <div style={{ display: "flex", gap: `${keySpacing}px` }}>
+                  {row.keys.map((key, keyIndex) => {
+                    if (key.spacer) {
+                      return (
+                        <div
+                          key={`spacer-${rowIndex}-${keyIndex}`}
+                          style={{
+                            width: `${calcKeyWidth(key.size)}px`,
+                            height: `${keyHeight}px`,
+                            background: "transparent",
+                          }}
+                        />
+                      );
+                    }
+
+                    if (key.type === "light") {
+                      return (
+                        <div
+                          key={`light-${rowIndex}-${keyIndex}`}
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            background: accentColor,
+                            boxShadow: `0 0 8px rgba(${hexToRgb(accentColor)}, 0.7)`,
+                            position: "relative",
+                            marginTop: "4px",
+                            marginLeft: keyIndex === 0 ? "0" : "6px",
+                          }}
+                        />
+                      );
+                    }
+                    const isPressed = pressedKeys.has(key.code || "");
+                    const isActive = isKeyActive(key.code);
+                    return (
+                      <div
+                        key={`key-${rowIndex}-${keyIndex}`}
+                        data-key={key.code}
+                        className={`key ${key.code} ${isActive ? "active" : ""}`}
+                        style={getKeyStyle(key, isPressed, isActive)}
+                        onMouseDown={() => key.code && handleKeyDown(key.code)}
+                        onMouseUp={() => key.code && handleKeyUp(key.code)}
+                        onMouseLeave={() =>
+                          key.code &&
+                          pressedKeys.has(key.code) &&
+                          handleKeyUp(key.code)
+                        }
+                        onTouchStart={(e) => {
+                          e.preventDefault();
+                        }}
+                        onTouchEnd={() => key.code && handleKeyUp(key.code)}
+                        onMouseEnter={() => {
+                          const element = document.querySelector(
+                            `.key.${key.code}`,
+                          ) as HTMLElement;
+                          if (
+                            element &&
+                            !pressedKeys.has(key.code || "") &&
+                            !isActive
+                          ) {
+                            Object.assign(element.style, themeStyles.keyHover);
+                          }
+                        }}
+                        onMouseOut={() => {
+                          const element = document.querySelector(
+                            `.key.${key.code}`,
+                          ) as HTMLElement;
+                          if (
+                            element &&
+                            !pressedKeys.has(key.code || "") &&
+                            !isActive
+                          ) {
+                            const keyType = getKeyType(key);
+                            let baseStyle = { ...themeStyles.key };
+
+                            if (
+                              keyType === "special" &&
+                              themeStyles.specialKey
+                            ) {
+                              baseStyle = {
+                                ...baseStyle,
+                                ...themeStyles.specialKey,
+                              };
+                            } else if (
+                              keyType === "function" &&
+                              themeStyles.functionKey
+                            ) {
+                              baseStyle = {
+                                ...baseStyle,
+                                ...themeStyles.functionKey,
+                              };
+                            } else if (
+                              keyType === "modifier" &&
+                              themeStyles.modifierKey
+                            ) {
+                              baseStyle = {
+                                ...baseStyle,
+                                ...themeStyles.modifierKey,
+                              };
+                            } else if (
+                              keyType === "space" &&
+                              themeStyles.spaceKey
+                            ) {
+                              baseStyle = {
+                                ...baseStyle,
+                                ...themeStyles.spaceKey,
+                              };
+                            } else if (
+                              keyType === "arrow" &&
+                              themeStyles.arrowKey
+                            ) {
+                              baseStyle = {
+                                ...baseStyle,
+                                ...themeStyles.arrowKey,
+                              };
+                            }
+
+                            Object.assign(element.style, baseStyle);
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {renderKeyIcon(key)}
+                          {key.label && <span>{key.label}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {showNavigationCluster && row.nav && row.nav.length > 0 && (
+                  <div
+                    className="nav-cluster"
+                    style={{
+                      display: "flex",
+                      gap: `${keySpacing}px`,
+                      marginLeft: `${Math.max(0, maxMainRowWidth - mainRowWidth + keySpacing * 2)}px`,
+                    }}
+                  >
+                    {row.nav.map((key, keyIndex) => {
+                      if (key.spacer) {
+                        return (
+                          <div
+                            key={`nav-spacer-${rowIndex}-${keyIndex}`}
+                            style={{
+                              width: `${calcKeyWidth(key.size)}px`,
+                              height: `${keyHeight}px`,
+                              background: "transparent",
+                            }}
+                          />
+                        );
+                      }
+
+                      if (key.type === "light") {
+                        return (
+                          <div
+                            key={`nav-light-${rowIndex}-${keyIndex}`}
+                            style={{
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              background: accentColor,
+                              boxShadow: `0 0 8px rgba(${hexToRgb(accentColor)}, 0.7)`,
+                              position: "relative",
+                              marginTop: "4px",
+                              marginLeft: keyIndex === 0 ? "0" : "6px",
+                            }}
+                          />
+                        );
+                      }
+                      const isPressed = pressedKeys.has(key.code || "");
+                      const isActive = isKeyActive(key.code);
+                      return (
+                        <div
+                          key={`nav-key-${rowIndex}-${keyIndex}`}
+                          data-key={key.code}
+                          className={`key ${key.code} ${isActive ? "active" : ""}`}
+                          style={getKeyStyle(key, isPressed, isActive)}
+                          onMouseDown={() =>
+                            key.code && handleKeyDown(key.code)
+                          }
+                          onMouseUp={() => key.code && handleKeyUp(key.code)}
+                          onMouseLeave={() =>
+                            key.code &&
+                            pressedKeys.has(key.code) &&
+                            handleKeyUp(key.code)
+                          }
+                          onTouchStart={(e) => {
+                            e.preventDefault();
+                          }}
+                          onTouchEnd={() => key.code && handleKeyUp(key.code)}
+                          onMouseEnter={() => {
+                            const element = document.querySelector(
+                              `.key.${key.code}`,
+                            ) as HTMLElement;
+                            if (
+                              element &&
+                              !pressedKeys.has(key.code || "") &&
+                              !isActive
+                            ) {
+                              Object.assign(
+                                element.style,
+                                themeStyles.keyHover,
+                              );
+                            }
+                          }}
+                          onMouseOut={() => {
+                            const element = document.querySelector(
+                              `.key.${key.code}`,
+                            ) as HTMLElement;
+                            if (
+                              element &&
+                              !pressedKeys.has(key.code || "") &&
+                              !isActive
+                            ) {
+                              const keyType = getKeyType(key);
+                              let baseStyle = { ...themeStyles.key };
+
+                              if (
+                                keyType === "special" &&
+                                themeStyles.specialKey
+                              ) {
+                                baseStyle = {
+                                  ...baseStyle,
+                                  ...themeStyles.specialKey,
+                                };
+                              } else if (
+                                keyType === "function" &&
+                                themeStyles.functionKey
+                              ) {
+                                baseStyle = {
+                                  ...baseStyle,
+                                  ...themeStyles.functionKey,
+                                };
+                              } else if (
+                                keyType === "modifier" &&
+                                themeStyles.modifierKey
+                              ) {
+                                baseStyle = {
+                                  ...baseStyle,
+                                  ...themeStyles.modifierKey,
+                                };
+                              } else if (
+                                keyType === "space" &&
+                                themeStyles.spaceKey
+                              ) {
+                                baseStyle = {
+                                  ...baseStyle,
+                                  ...themeStyles.spaceKey,
+                                };
+                              } else if (
+                                keyType === "arrow" &&
+                                themeStyles.arrowKey
+                              ) {
+                                baseStyle = {
+                                  ...baseStyle,
+                                  ...themeStyles.arrowKey,
+                                };
+                              }
+                              Object.assign(element.style, baseStyle);
+                            }
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {renderKeyIcon(key)}
+                            {key.label && <span>{key.label}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export function Keyboard({
+  allowPhysicalKeyboard = true,
+  className = "",
+  enableSound = false,
+  onKeyPress,
+  onKeyRelease,
+  showPreview = false,
+  theme = "minimal",
+  ...props
+}: KeyboardProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [lastPressedKey, setLastPressedKey] = useState<string | null>(null);
+  const [pressSequence, setPressSequence] = useState(0);
+  const playSound = useKeyboardSound(enableSound);
+
+  useEffect(() => {
+    const element = containerRef.current;
 
     if (!element) {
-      return
+      return;
     }
 
     const observer = new IntersectionObserver(
       ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.2 }
-    )
+      { threshold: 0.2 },
+    );
 
-    observer.observe(element)
+    observer.observe(element);
 
-    return () => observer.disconnect()
-  }, [containerRef])
+    return () => observer.disconnect();
+  }, []);
 
-  useEffect(() => {
-    if (!isVisible) {
-      return
-    }
+  const handleKeyPress = useCallback(
+    (code: string, key?: string) => {
+      setLastPressedKey(code);
+      setPressSequence((currentSequence) => currentSequence + 1);
+      playSound(code);
+      onKeyPress?.(code, key);
+    },
+    [onKeyPress, playSound],
+  );
 
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.repeat) {
-        return
-      }
-
-      setPressed(event.code)
-    }
-
-    function handleKeyUp(event: KeyboardEvent) {
-      setReleased(event.code)
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    window.addEventListener("keyup", handleKeyUp)
-    window.addEventListener("blur", releaseAll)
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      window.removeEventListener("keyup", handleKeyUp)
-      window.removeEventListener("blur", releaseAll)
-    }
-  }, [isVisible, releaseAll, setPressed, setReleased])
+  const handleKeyRelease = useCallback(
+    (code: string, key?: string) => {
+      onKeyRelease?.(code, key);
+    },
+    [onKeyRelease],
+  );
 
   return (
-    <KeyboardContext.Provider
-      value={{
-        lastPressedKey,
-        playSound,
-        pressSequence,
-        pressedKeys,
-        releaseAll,
-        setPressed,
-        setReleased,
-      }}
+    <div
+      ref={containerRef}
+      className={`mx-auto w-fit [zoom:0.34] md:[zoom:0.58] lg:[zoom:0.72] xl:[zoom:0.82] 2xl:[zoom:0.9] ${className}`}
     >
-      {children}
-    </KeyboardContext.Provider>
-  )
-}
-
-function KeystrokePreview() {
-  const { lastPressedKey, pressSequence, pressedKeys } = useKeyboard()
-  const shouldHideKey =
-    !lastPressedKey ||
-    lastPressedKey === "Space" ||
-    lastPressedKey === "ShiftLeft" ||
-    lastPressedKey === "ShiftRight"
-  const displayKey = shouldHideKey ? null : getKeyDisplayLabel(lastPressedKey)
-
-  return (
-    <div className="relative flex h-14 w-full items-center justify-center">
-      <AnimatePresence mode="popLayout">
-        {displayKey ? (
-          <motion.div
-            key={`${pressSequence}-${lastPressedKey}`}
-            layout
-            initial={{ opacity: 0, scale: 0.7, y: 6 }}
-            animate={{
-              opacity: 1,
-              scale: pressedKeys.size > 0 ? 0.96 : 1,
-              y: 0,
-            }}
-            exit={{ opacity: 0, scale: 0.82, y: -6 }}
-            transition={{
-              damping: 30,
-              mass: 0.5,
-              stiffness: 500,
-              type: "spring",
-            }}
-            className="absolute rounded-xl px-4 py-2 font-mono text-2xl font-black text-foreground/70"
-          >
-            <motion.span
-              initial={{ filter: "blur(10px)", opacity: 0, scale: 1.18 }}
-              animate={{ filter: "blur(0px)", opacity: 1, scale: 1 }}
-              transition={{ duration: 0.08 }}
+      {showPreview ? (
+        <div className="relative flex h-14 w-full items-center justify-center">
+          {lastPressedKey ? (
+            <div
+              key={`${pressSequence}-${lastPressedKey}`}
+              className="absolute rounded-xl px-4 py-2 font-mono text-2xl font-black text-foreground/70"
             >
-              {displayKey}
-            </motion.span>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-export function Keyboard({
-  className,
-  enableSound = false,
-  showPreview = false,
-}: KeyboardProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  return (
-    <KeyboardProvider enableSound={enableSound} containerRef={containerRef}>
-      <div
-        ref={containerRef}
-        className={cn(
-          "mx-auto w-fit [zoom:0.92] lg:[zoom:1.32] xl:[zoom:1.48] 2xl:[zoom:1.62]",
-          className
-        )}
-      >
-        {showPreview ? <KeystrokePreview /> : null}
-        <Keypad />
-      </div>
-    </KeyboardProvider>
-  )
-}
-
-function Keypad() {
-  return (
-    <div className="h-full w-fit rounded-xl bg-neutral-200 p-1 shadow-sm ring-1 shadow-black/5 ring-black/5">
-      <Row>
-        <Key
-          code="Escape"
-          containerClassName="rounded-tl-xl"
-          className="w-10 rounded-tl-lg"
-          contentClassName="items-start justify-end pb-[2px] pl-[4px]"
-        >
-          <span>esc</span>
-        </Key>
-        <Key code="F1">
-          <IconBrightnessDown className="size-[6px]" />
-          <span className="mt-1">F1</span>
-        </Key>
-        <Key code="F2">
-          <IconBrightnessUp className="size-[6px]" />
-          <span className="mt-1">F2</span>
-        </Key>
-        <Key code="F3">
-          <IconTable className="size-[6px]" />
-          <span className="mt-1">F3</span>
-        </Key>
-        <Key code="F4">
-          <IconSearch className="size-[6px]" />
-          <span className="mt-1">F4</span>
-        </Key>
-        <Key code="F5">
-          <IconMicrophone className="size-[6px]" />
-          <span className="mt-1">F5</span>
-        </Key>
-        <Key code="F6">
-          <IconMoon className="size-[6px]" />
-          <span className="mt-1">F6</span>
-        </Key>
-        <Key code="F7">
-          <IconPlayerTrackPrev className="size-[6px]" />
-          <span className="mt-1">F7</span>
-        </Key>
-        <Key code="F8">
-          <IconPlayerSkipForward className="size-[6px]" />
-          <span className="mt-1">F8</span>
-        </Key>
-        <Key code="F9">
-          <IconPlayerTrackNext className="size-[6px]" />
-          <span className="mt-1">F9</span>
-        </Key>
-        <Key code="F10">
-          <IconVolume3 className="size-[6px]" />
-          <span className="mt-1">F10</span>
-        </Key>
-        <Key code="F11">
-          <IconVolume2 className="size-[6px]" />
-          <span className="mt-1">F11</span>
-        </Key>
-        <Key code="F12">
-          <IconVolume className="size-[6px]" />
-          <span className="mt-1">F12</span>
-        </Key>
-        <Key containerClassName="rounded-tr-xl" className="rounded-tr-lg">
-          <div className="size-4 rounded-full bg-gradient-to-b from-neutral-300 via-neutral-200 to-neutral-300 p-px">
-            <div className="size-full rounded-full bg-neutral-100" />
-          </div>
-        </Key>
-      </Row>
-
-      <Row>
-        <Key code="Backquote">
-          <DoubleLegend top="~" bottom="`" />
-        </Key>
-        <Key code="Digit1">
-          <DoubleLegend top="!" bottom="1" />
-        </Key>
-        <Key code="Digit2">
-          <DoubleLegend top="@" bottom="2" />
-        </Key>
-        <Key code="Digit3">
-          <DoubleLegend top="#" bottom="3" />
-        </Key>
-        <Key code="Digit4">
-          <DoubleLegend top="$" bottom="4" />
-        </Key>
-        <Key code="Digit5">
-          <DoubleLegend top="%" bottom="5" />
-        </Key>
-        <Key code="Digit6">
-          <DoubleLegend top="^" bottom="6" />
-        </Key>
-        <Key code="Digit7">
-          <DoubleLegend top="&" bottom="7" />
-        </Key>
-        <Key code="Digit8">
-          <DoubleLegend top="*" bottom="8" />
-        </Key>
-        <Key code="Digit9">
-          <DoubleLegend top="(" bottom="9" />
-        </Key>
-        <Key code="Digit0">
-          <DoubleLegend top=")" bottom="0" />
-        </Key>
-        <Key code="Minus">
-          <DoubleLegend top="-" bottom="_" />
-        </Key>
-        <Key code="Equal">
-          <DoubleLegend top="+" bottom="=" />
-        </Key>
-        <Key
-          code="Backspace"
-          className="w-10"
-          contentClassName="items-end justify-end pb-[2px] pr-[4px]"
-        >
-          <span>delete</span>
-        </Key>
-      </Row>
-
-      <Row>
-        <Key
-          code="Tab"
-          className="w-10"
-          contentClassName="items-start justify-end pb-[2px] pl-[4px]"
-        >
-          <span>tab</span>
-        </Key>
-        {["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"].map(
-          (letter) => (
-            <Key key={letter} code={`Key${letter}`}>
-              {letter}
-            </Key>
-          )
-        )}
-        <Key code="BracketLeft">
-          <DoubleLegend top="{" bottom="[" />
-        </Key>
-        <Key code="BracketRight">
-          <DoubleLegend top="}" bottom="]" />
-        </Key>
-        <Key code="Backslash">
-          <DoubleLegend top="|" bottom="\\" />
-        </Key>
-      </Row>
-
-      <Row>
-        <Key
-          code="CapsLock"
-          className="w-[2.8rem]"
-          contentClassName="items-start justify-end pb-[2px] pl-[4px]"
-        >
-          <span>caps lock</span>
-        </Key>
-        {["A", "S", "D", "F", "G", "H", "J", "K", "L"].map((letter) => (
-          <Key key={letter} code={`Key${letter}`}>
-            {letter}
-          </Key>
-        ))}
-        <Key code="Semicolon">
-          <DoubleLegend top=":" bottom=";" />
-        </Key>
-        <Key code="Quote">
-          <DoubleLegend top={'"'} bottom="'" />
-        </Key>
-        <Key
-          code="Enter"
-          className="w-[2.85rem]"
-          contentClassName="items-end justify-end pb-[2px] pr-[4px]"
-        >
-          <span>return</span>
-        </Key>
-      </Row>
-
-      <Row>
-        <Key
-          code="ShiftLeft"
-          className="w-[3.65rem]"
-          contentClassName="items-start justify-end pb-[2px] pl-[4px]"
-        >
-          <span>shift</span>
-        </Key>
-        {["Z", "X", "C", "V", "B", "N", "M"].map((letter) => (
-          <Key key={letter} code={`Key${letter}`}>
-            {letter}
-          </Key>
-        ))}
-        <Key code="Comma">
-          <DoubleLegend top="<" bottom="," />
-        </Key>
-        <Key code="Period">
-          <DoubleLegend top=">" bottom="." />
-        </Key>
-        <Key code="Slash">
-          <DoubleLegend top="?" bottom="/" />
-        </Key>
-        <Key
-          code="ShiftRight"
-          className="w-[3.65rem]"
-          contentClassName="items-end justify-end pb-[2px] pr-[4px]"
-        >
-          <span>shift</span>
-        </Key>
-      </Row>
-
-      <Row>
-        <ModifierKey
-          code="Fn"
-          containerClassName="rounded-bl-xl"
-          className="rounded-bl-lg"
-        >
-          <span>fn</span>
-          <IconWorld className="size-[6px]" />
-        </ModifierKey>
-        <ModifierKey code="ControlLeft">
-          <IconChevronUp className="size-[6px]" />
-          <span>control</span>
-        </ModifierKey>
-        <ModifierKey code="AltLeft">
-          <OptionKey className="size-[6px]" />
-          <span>option</span>
-        </ModifierKey>
-        <ModifierKey code="MetaLeft" className="w-8">
-          <IconCommand className="size-[6px]" />
-          <span>command</span>
-        </ModifierKey>
-        <Key code="Space" className="w-[8.2rem]" />
-        <ModifierKey code="MetaRight" className="w-8">
-          <IconCommand className="size-[6px]" />
-          <span>command</span>
-        </ModifierKey>
-        <ModifierKey code="AltRight">
-          <OptionKey className="size-[6px]" />
-          <span>option</span>
-        </ModifierKey>
-        <div className="flex h-6 w-[4.9rem] items-center justify-end rounded-[4px] p-[0.5px]">
-          <Key code="ArrowLeft" className="size-6">
-            <IconCaretLeftFilled className="size-[6px]" />
-          </Key>
-          <div className="flex flex-col">
-            <Key code="ArrowUp" className="h-3 w-6">
-              <IconCaretUpFilled className="size-[6px]" />
-            </Key>
-            <Key code="ArrowDown" className="h-3 w-6">
-              <IconCaretDownFilled className="size-[6px]" />
-            </Key>
-          </div>
-          <Key
-            code="ArrowRight"
-            containerClassName="rounded-br-xl"
-            className="size-6 rounded-br-lg"
-          >
-            <IconCaretRightFilled className="size-[6px]" />
-          </Key>
+              {getKeyDisplayLabel(lastPressedKey)}
+            </div>
+          ) : null}
         </div>
-      </Row>
-    </div>
-  )
-}
-
-function Row({ children }: { children: React.ReactNode }) {
-  return <div className="mb-[2px] flex w-full shrink-0 gap-[2px]">{children}</div>
-}
-
-function Key({
-  className,
-  children,
-  contentClassName,
-  containerClassName,
-  code,
-}: KeyDefinition) {
-  const { pressedKeys, setPressed, setReleased } = useKeyboard()
-  const isPressed = code ? pressedKeys.has(code) : false
-
-  function handlePressStart() {
-    if (code) {
-      setPressed(code)
-    }
-  }
-
-  function handlePressEnd() {
-    if (code && isPressed) {
-      setReleased(code)
-    }
-  }
-
-  return (
-    <div className={cn("rounded-[4px] p-[0.5px]", containerClassName)}>
-      <button
-        aria-label={code ? getKeyDisplayLabel(code) : undefined}
-        type="button"
-        onPointerDown={handlePressStart}
-        onPointerLeave={handlePressEnd}
-        onPointerUp={handlePressEnd}
-        className={cn(
-          "flex h-6 w-6 cursor-pointer items-center justify-center rounded-[3.5px] bg-neutral-100 text-neutral-700 shadow-[0_0_1px_0_rgb(0_0_0/50%),0_1px_1px_0_rgb(0_0_0/10%),0_1px_0_0_rgb(255_255_255)_inset] transition-transform duration-75 active:scale-[0.98]",
-          isPressed &&
-            "scale-[0.98] bg-neutral-100/80 shadow-[0_0_1px_0_rgb(0_0_0/50%),0_1px_1px_0_rgb(0_0_0/10%),0_1px_0_0_rgb(255_255_255/50%)_inset]",
-          className
-        )}
-      >
-        <div
-          className={cn(
-            "flex h-full w-full flex-col items-center justify-center text-[5px] leading-none",
-            contentClassName
-          )}
-        >
-          {children}
-        </div>
-      </button>
-    </div>
-  )
-}
-
-function ModifierKey({
-  className,
-  children,
-  containerClassName,
-  code,
-}: KeyDefinition) {
-  const { pressedKeys, setPressed, setReleased } = useKeyboard()
-  const isPressed = code ? pressedKeys.has(code) : false
-
-  function handlePressStart() {
-    if (code) {
-      setPressed(code)
-    }
-  }
-
-  function handlePressEnd() {
-    if (code && isPressed) {
-      setReleased(code)
-    }
-  }
-
-  return (
-    <div className={cn("rounded-[4px] p-[0.5px]", containerClassName)}>
-      <button
-        aria-label={code ? getKeyDisplayLabel(code) : undefined}
-        type="button"
-        onPointerDown={handlePressStart}
-        onPointerLeave={handlePressEnd}
-        onPointerUp={handlePressEnd}
-        className={cn(
-          "flex h-6 w-6 cursor-pointer items-center justify-center rounded-[3.5px] bg-neutral-100 text-neutral-700 shadow-[0_0_1px_0_rgb(0_0_0/50%),0_1px_1px_0_rgb(0_0_0/10%),0_1px_0_0_rgb(255_255_255)_inset] transition-transform duration-75 active:scale-[0.98]",
-          isPressed &&
-            "scale-[0.98] bg-neutral-100/80 shadow-[0_0_1px_0_rgb(0_0_0/50%),0_1px_1px_0_rgb(0_0_0/10%),0_1px_0_0_rgb(255_255_255/50%)_inset]",
-          className
-        )}
-      >
-        <div className="flex size-full flex-col items-start justify-between p-1 text-[5px] leading-none">
-          {children}
-        </div>
-      </button>
-    </div>
-  )
-}
-
-function OptionKey({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 32 32"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <rect
-        height="2"
-        stroke="currentColor"
-        strokeWidth={2}
-        width="10"
-        x="18"
-        y="5"
+      ) : null}
+      <InteractiveKeyboard
+        allowPhysicalKeyboard={allowPhysicalKeyboard && isVisible}
+        className=""
+        onKeyPress={handleKeyPress}
+        onKeyRelease={handleKeyRelease}
+        theme={theme}
+        {...props}
       />
-      <polygon
-        points="10.6,5 4,5 4,7 9.4,7 18.4,27 28,27 28,25 19.6,25"
-        stroke="currentColor"
-        strokeWidth={2}
-      />
-    </svg>
-  )
+    </div>
+  );
 }
 
-function DoubleLegend({
-  bottom,
-  top,
-}: {
-  bottom: string
-  top: string
-}) {
-  return (
-    <>
-      <span>{top}</span>
-      <span>{bottom}</span>
-    </>
-  )
-}
+export default InteractiveKeyboard;
