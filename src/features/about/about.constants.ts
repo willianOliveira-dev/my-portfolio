@@ -1,4 +1,4 @@
 export const RESUME_FILE_NAME =
-  "curriculo-willian-oliveira-desenvolvedor-full-stack.pdf"
+  "curriculo_willian_oliveira_pt.pdf"
 
-export const RESUME_PUBLIC_PATH = `/documents/${RESUME_FILE_NAME}`
+export const RESUME_PUBLIC_PATH = `/download/${RESUME_FILE_NAME}`
