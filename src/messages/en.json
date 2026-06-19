@@ -83,6 +83,7 @@
   "chat_powered_by": "Powered by",
   "chat_not_connected": "This feature is still being connected to the backend with Vercel AI SDK. Check back soon!",
   "chat_model_label": "AI model",
+  "chat_trigger_label": "AI Wyatt",
   "chat_model_notice": "Issues? Switch models.",
   "navigation_faq": "FAQ",
   "faq_title": "Frequently Asked Questions",
