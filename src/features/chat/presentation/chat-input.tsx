@@ -31,7 +31,7 @@ export function ChatInput({
   const { locale } = useCurrentLocale();
 
   return (
-    <div className="z-10 flex shrink-0 flex-col gap-1.5 border-t border-border/50 bg-transparent p-2.5">
+    <div className="z-10 flex shrink-0 flex-col gap-2 border-t border-primary/10 bg-white/48 p-3 backdrop-blur-2xl dark:border-white/8 dark:bg-black/30">
       <div className="flex items-center justify-between gap-2">
         <ChatModelSelector
           model={selectedModel}
@@ -42,20 +42,23 @@ export function ChatInput({
           {m.chat_model_notice({}, { locale })}
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="flex items-center gap-1.5">
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center gap-2 rounded-full border border-primary/10 bg-white/80 p-1 shadow-[0_0.75rem_2rem_rgb(15_15_15/7%),inset_0_1px_0_rgb(255_255_255/85%)] backdrop-blur-xl dark:border-white/10 dark:bg-white/7 dark:shadow-[0_0.75rem_2rem_rgb(0_0_0/24%),inset_0_1px_0_rgb(255_255_255/7%)]"
+      >
         <Input
           value={input}
           onChange={handleInputChange}
           placeholder={m.chat_input_placeholder({}, { locale })}
-          className="h-9 flex-1 bg-transparent border-none px-0 shadow-none focus-visible:ring-0"
+          className="h-9 flex-1 border-none bg-transparent px-3 shadow-none placeholder:text-muted-foreground/75 focus-visible:ring-0"
         />
         <Button
           type="submit"
           size="icon"
           disabled={isLoading || !input.trim()}
-          className="size-9 shrink-0 rounded-full"
+          className="size-9 shrink-0 rounded-full bg-primary text-primary-foreground shadow-[0_0.6rem_1.5rem_rgb(193_0_7/25%)] hover:bg-primary/90 disabled:shadow-none"
         >
-          <SendHorizontal />
+          <SendHorizontal data-icon="inline-start" />
           <span className="sr-only">Enviar mensagem</span>
         </Button>
       </form>

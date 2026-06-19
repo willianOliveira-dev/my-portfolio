@@ -18,7 +18,7 @@ export function ChatMascotAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/90 shadow-sm dark:bg-background/20",
+        "flex shrink-0 items-center justify-center rounded-full border border-primary/15 bg-white/85 shadow-[0_0.75rem_2rem_rgb(193_0_7/12%),inset_0_1px_0_rgb(255_255_255/85%)] backdrop-blur-xl dark:border-white/12 dark:bg-white/8 dark:shadow-[0_0.75rem_2rem_rgb(0_0_0/35%),inset_0_1px_0_rgb(255_255_255/8%)]",
         isMedium ? "h-10 w-10 p-1.5" : "h-8 w-8 p-1",
         className
       )}
@@ -29,7 +29,7 @@ export function ChatMascotAvatar({
         width={isMedium ? 28 : 22}
         height={isMedium ? 27 : 21}
         className={cn(
-          "object-contain",
+          "object-contain [filter:brightness(0)_saturate(100%)_invert(15%)_sepia(95%)_saturate(5430%)_hue-rotate(354deg)_brightness(88%)_contrast(112%)] dark:[filter:brightness(0)_invert(1)]",
           isMedium ? "h-7 w-7" : "h-5 w-5",
           imageClassName
         )}

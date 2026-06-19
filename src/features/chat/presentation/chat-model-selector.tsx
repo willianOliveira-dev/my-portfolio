@@ -36,17 +36,20 @@ export function ChatModelSelector({
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 shrink-0 gap-2 rounded-full border-foreground/10 bg-background/70 px-3 text-xs shadow-sm backdrop-blur-xl"
+          className="h-9 shrink-0 gap-2 rounded-full border-primary/10 bg-white/72 px-3 text-xs shadow-sm backdrop-blur-xl hover:bg-white dark:border-white/10 dark:bg-white/7 dark:hover:bg-white/12"
           aria-label={m.chat_model_label({}, { locale })}
         >
           <BrainCircuit data-icon="inline-start" />
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-foreground dark:text-white/88">
             {selectedModel?.label}
           </span>
           <ChevronDown data-icon="inline-end" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-44">
+      <DropdownMenuContent
+        align="start"
+        className="min-w-44 border-primary/10 bg-white/90 backdrop-blur-2xl dark:border-white/10 dark:bg-black/85"
+      >
         <DropdownMenuLabel>
           {m.chat_model_label({}, { locale })}
         </DropdownMenuLabel>

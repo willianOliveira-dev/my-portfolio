@@ -17,17 +17,17 @@ export function ChatQuickReplies({ onSelect }: ChatQuickRepliesProps) {
   ];
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="flex flex-wrap gap-2 px-4 pb-2"
+      className="flex flex-wrap gap-2 px-2 pb-2 sm:px-4"
     >
       {replies.map((reply) => (
         <Badge
           key={reply}
           variant="outline"
-          className="cursor-pointer hover:bg-muted/50 rounded-full py-1.5 px-3 font-normal"
+          className="cursor-pointer rounded-full border-primary/14 bg-white/62 px-3 py-1.5 font-normal text-foreground shadow-sm backdrop-blur-xl transition-colors hover:bg-primary/8 hover:text-primary dark:border-white/10 dark:bg-white/7 dark:text-white/78 dark:hover:bg-white/12 dark:hover:text-white"
           onClick={() => onSelect(reply)}
         >
           {reply}
