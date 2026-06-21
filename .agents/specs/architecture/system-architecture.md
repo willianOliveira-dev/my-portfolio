@@ -27,12 +27,14 @@ src/
   components/ui/         # primitives visuais reutilizaveis
   components/            # modules compartilhados sem linguagem de dominio
   features/
-  <feature>/
-    domain/              # regras e tipos puros, quando existirem
-    application/         # casos de uso e ports, quando necessarios
-    adapters/            # integracoes e mapeamento de tecnologia
-    presentation/        # modulos React especificos da feature
+    <feature>/
+      domain/            # regras e tipos puros, quando existirem
+      application/       # casos de uso e ports, quando necessarios
+      adapters/          # integracoes e mapeamento de tecnologia
+      presentation/      # modulos React especificos da feature
   lib/                   # utilitarios genericos sem linguagem de dominio
+  shared/                # utilitarios compartilhados e neutros ao dominio
+  emails/                # templates de email usados por adapters/rotas
 public/                  # assets publicos
 ```
 
@@ -75,8 +77,8 @@ Regras:
   conhecer detalhes internos.
 - Uma feature nao importa implementacoes internas de outra feature. Quando a
   colaboracao for real, expor uma interface pequena no modulo proprietario.
-- `lib` nao recebe conceitos como Projeto, Experiencia ou Contato. Codigo com
-  linguagem do dominio pertence a uma feature.
+- `lib` e `shared` nao recebem conceitos como Projeto, Experiencia, Contato ou
+  Assistente. Codigo com linguagem do dominio pertence a uma feature.
 
 ## Modularizacao
 

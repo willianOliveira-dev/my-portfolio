@@ -14,8 +14,8 @@ no repositorio.
 
 ## Ordem de Leitura
 
-1. `AGENTS.md`
-2. `CONTEXT.md`
+1. `../../AGENTS.md`
+2. `../../CONTEXT.md`
 3. `architecture/system-architecture.md`
 4. `engineering/frontend-standards.md`
 5. Specs especializadas, como `internationalization/`
