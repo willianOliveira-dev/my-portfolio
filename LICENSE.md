@@ -46,4 +46,4 @@ Como o código está hospedado publicamente no GitHub, você tem a permissão co
 Caso tenha interesse em utilizar parte da arquitetura, adaptar componentes específicos ou propor alguma parceria comercial que envolva o código deste repositório, o consentimento deve ser previamente negociado.
 
 Entre em contato exclusivamente através do e-mail:
-**contact@willianoliveira.dev.br**
+**willian.dev.tech@gmail.com**
